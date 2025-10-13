@@ -3604,6 +3604,21 @@ skip:
 	}
 }
 
+static __declspec(naked) void wmSetupRandomEncounter_hack() {
+	static const DWORD wmSetupRandomEncounter_Ret = 0x4C11DB;
+	__asm {
+		test edx, edx; // critter
+		jz   skip;
+		// overwritten engine code
+		mov  [esi + whoHitMe], edx;
+		mov  [edx + whoHitMe], esi;
+		retn;
+skip:
+		add  esp, 4;
+		jmp  wmSetupRandomEncounter_Ret;
+	}
+}
+
 void BugFixes::init() {
 	#ifndef NDEBUG
 	LoadGameHook::OnBeforeGameClose() += PrintAddrList;
@@ -4470,6 +4485,13 @@ void BugFixes::init() {
 
 	// Fix crash when a critter with a powered melee/unarmed weapon runs out of ammo and there is ammo nearby
 	MakeCall(0x47887B, item_w_can_reload_hack);
+
+	// Fix crash when an encounter between two groups fighting each other fails to spawn one group
+	MakeCall(0x4C119A, wmSetupRandomEncounter_hack, 1);
+
+	// Fix incorrect upper limit in mouse_set_sensitivity_ engine function
+	SafeWrite8(0x4CAC54, 0x77); // jae > ja
+	SafeWrite8(0x50FA0A, 0x04); // 2.5 (was 2.0)
 }
 
 }
